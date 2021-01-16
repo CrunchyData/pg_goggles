@@ -108,3 +108,84 @@ CREATE OR REPLACE VIEW pgp_stat_bgwriter AS
 -- SELECT * FROM pgr_stat_bgwriter;
 -- SELECT * FROM pgp_stat_bgwriter;
 
+
+--
+-- Database
+--
+DROP VIEW IF EXISTS pgg_stat_database CASCADE;
+CREATE OR REPLACE VIEW pgg_stat_database AS
+    SELECT
+            D.oid AS datid,
+            D.datname AS datname,
+                CASE
+                    WHEN (D.oid = (0)::oid) THEN 0
+                    ELSE pg_stat_get_db_numbackends(D.oid)
+                END AS numbackends,
+            pg_stat_get_db_xact_commit(D.oid) AS xact_commit,
+            pg_stat_get_db_xact_rollback(D.oid) AS xact_rollback,
+            current_setting('block_size')::numeric * 
+                (pg_stat_get_db_blocks_fetched(D.oid) -
+                    pg_stat_get_db_blocks_hit(D.oid)) AS bytes_read,
+            current_setting('block_size')::numeric * 
+                (pg_stat_get_db_blocks_hit(D.oid)) AS bytes_hit,
+            pg_stat_get_db_tuples_returned(D.oid) AS tup_returned,
+            pg_stat_get_db_tuples_fetched(D.oid) AS tup_fetched,
+            pg_stat_get_db_tuples_inserted(D.oid) AS tup_inserted,
+            pg_stat_get_db_tuples_updated(D.oid) AS tup_updated,
+            pg_stat_get_db_tuples_deleted(D.oid) AS tup_deleted,
+            pg_stat_get_db_conflict_all(D.oid) AS conflicts,
+            pg_stat_get_db_temp_files(D.oid) AS temp_files,
+            pg_stat_get_db_temp_bytes(D.oid) AS temp_bytes,
+            pg_stat_get_db_deadlocks(D.oid) AS deadlocks,
+            pg_stat_get_db_checksum_failures(D.oid) AS checksum_failures,
+            pg_stat_get_db_checksum_last_failure(D.oid) AS checksum_last_failure,
+            pg_stat_get_db_blk_read_time(D.oid) AS blk_read_time,
+            pg_stat_get_db_blk_write_time(D.oid) AS blk_write_time,
+            pg_stat_get_db_stat_reset_time(D.oid) AS stats_reset
+    FROM (
+        SELECT 0 AS oid, NULL::name AS datname
+        UNION ALL
+        SELECT oid, datname FROM pg_database
+    ) D;
+
+-- Byte rate oriented view
+-- TODO Find a better rate name label than "per_sec"; rate?
+DROP VIEW IF EXISTS pgb_stat_database CASCADE;
+    CREATE OR REPLACE VIEW pgb_stat_database AS
+    WITH db AS (
+        SELECT
+            current_timestamp AS sample,
+            current_timestamp - stats_reset AS runtime,
+            (EXTRACT(EPOCH FROM current_timestamp) - extract(EPOCH FROM stats_reset))::numeric AS seconds,
+            d.*
+        FROM
+            pg_stat_database d
+    )
+    SELECT
+        datid, datname, 
+        xact_commit   / seconds AS xact_commit_per_sec,
+        xact_rollback / seconds AS xact_rollback_per_sec,
+        current_setting('block_size')::numeric * blks_read / seconds AS bytes_read_per_sec,
+        current_setting('block_size')::numeric * blks_hit / seconds AS bytes_hit_per_sec,
+        tup_returned  / seconds AS tup_returned_per_sec,
+        tup_fetched   / seconds AS tup_fetched_per_sec,
+        tup_inserted  / seconds AS tup_inserted_per_sec,
+        tup_updated   / seconds AS tup_updated_per_sec,
+        tup_deleted   / seconds AS tup_deleted_per_sec,
+        conflicts     / seconds AS conflicts_per_sec,
+        temp_files    / seconds AS temp_files_per_sec,
+        temp_bytes    / seconds AS temp_bytes_per_sec,
+        deadlocks     / seconds AS deadlocks_per_sec,
+        checksum_failures,
+        checksum_last_failure,
+        CASE WHEN (blks_read) > 0
+            THEN blk_read_time / blks_read 
+            ELSE 0 END AS avg_blk_read_time,
+        -- TODO What's the right denominator for this one?
+        blk_write_time,
+        stats_reset
+    FROM db;
+
+-- SELECT * from pgg_data_database;
+-- SELECT * from pgb_stat_database;
+
