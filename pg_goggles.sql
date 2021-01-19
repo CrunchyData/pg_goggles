@@ -4,6 +4,9 @@
 -- Buffers are 8192 bytes.
 -- Page size is adjustable at compile time, and some commercial distributions (EDB, others) did 16K block PG releases at one point.
 
+-- All "rates" are bytes per second or event/second unless otherwise labeled.
+-- Some rates go through PG pretty print
+
 -- Goggles enhanced view
 DROP VIEW IF EXISTS pgg_stat_bgwriter CASCADE;
 CREATE OR REPLACE VIEW pgg_stat_bgwriter AS
@@ -42,20 +45,22 @@ CREATE OR REPLACE VIEW pgb_stat_bgwriter AS
         sample,
         runtime,
         CASE WHEN (checkpoints_timed + checkpoints_req) > 0
-            THEN round((100 * checkpoints_timed / (checkpoints_timed + checkpoints_req))::numeric,3)
+            THEN ROUND((100 * checkpoints_timed / (checkpoints_timed + checkpoints_req))::numeric,3)
             ELSE 0 END AS checkpoint_timed_pct,
         CASE WHEN (checkpoints_timed + checkpoints_req) > 0
-            THEN round(seconds / 60 / (checkpoints_timed + checkpoints_req),3)
+            THEN ROUND(seconds / 60 / (checkpoints_timed + checkpoints_req),3)
             ELSE 0 END AS minutes_to_checkpoint,
-        8192 * buffers_alloc      / seconds AS alloc_bps,
-        8192 * buffers_checkpoint / seconds AS checkpoint_bps,
-        8192 * buffers_clean      / seconds AS clean_bps,
-        8192 * buffers_backend    / seconds AS backend_bps,
-        (buffers_checkpoint + buffers_clean + buffers_backend) / seconds AS total_write_bps,
-        maxwritten_clean / seconds AS max_clean_per_sec,
-        8192 * buffers_backend_fsync AS bytes_backend_fsync,
-        checkpoint_write_time / buffers_checkpoint AS avg_chkp_write_s,
-        checkpoint_sync_time  / buffers_checkpoint AS avg_chkp_sync_s
+        ROUND(8192 * buffers_alloc      / seconds,3) AS alloc_byte_rate,
+        ROUND(8192 * (buffers_checkpoint + buffers_clean + buffers_backend) / seconds,3) AS total_write_byte_rate,
+        ROUND(8192 * buffers_checkpoint / seconds,3) AS checkpoint_byte_rate,
+        ROUND(8192 * buffers_clean      / seconds,3) AS clean_byte_rate,
+        ROUND(8192 * buffers_backend    / seconds,3) AS backend_byte_rate,
+        checkpoint_write_time,
+        checkpoint_sync_time,
+        ROUND(1000 * checkpoint_write_time::numeric / buffers_checkpoint,3) AS checkpoint_write_avg_ms,
+        ROUND(1000 * checkpoint_sync_time::numeric  / buffers_checkpoint,3) AS checkpoint_sync_avg_ms,
+        ROUND(maxwritten_clean / seconds,3) AS max_clean_per_sec,
+        8192 * buffers_backend_fsync AS bytes_backend_fsync
     FROM bgw
     ;
 
@@ -149,9 +154,8 @@ CREATE OR REPLACE VIEW pgg_stat_database AS
     ) D;
 
 -- Byte rate oriented view
--- TODO Find a better rate name label than "per_sec"; rate?
 DROP VIEW IF EXISTS pgb_stat_database CASCADE;
-    CREATE OR REPLACE VIEW pgb_stat_database AS
+CREATE OR REPLACE VIEW pgb_stat_database AS
     WITH db AS (
         SELECT
             current_timestamp AS sample,
@@ -160,32 +164,48 @@ DROP VIEW IF EXISTS pgb_stat_database CASCADE;
             d.*
         FROM
             pg_stat_database d
+        WHERE
+            datname=current_database()
     )
     SELECT
+        sample,
+        runtime,
         datid, datname, 
+        xact_commit, xact_rollback,
         xact_commit   / seconds AS xact_commit_per_sec,
         xact_rollback / seconds AS xact_rollback_per_sec,
+        current_setting('block_size')::numeric * blks_read AS bytes_read,
         current_setting('block_size')::numeric * blks_read / seconds AS bytes_read_per_sec,
+        current_setting('block_size')::numeric * blks_hit AS bytes_hit,
         current_setting('block_size')::numeric * blks_hit / seconds AS bytes_hit_per_sec,
-        tup_returned  / seconds AS tup_returned_per_sec,
+        tup_returned, tup_fetched, tup_inserted,  tup_updated, tup_deleted,
+        tup_returned  / seconds AS tup_returned_rate,
         tup_fetched   / seconds AS tup_fetched_per_sec,
-        tup_inserted  / seconds AS tup_inserted_per_sec,
-        tup_updated   / seconds AS tup_updated_per_sec,
-        tup_deleted   / seconds AS tup_deleted_per_sec,
-        conflicts     / seconds AS conflicts_per_sec,
-        temp_files    / seconds AS temp_files_per_sec,
-        temp_bytes    / seconds AS temp_bytes_per_sec,
-        deadlocks     / seconds AS deadlocks_per_sec,
+        tup_inserted  / seconds AS tup_inserted_rate,
+        tup_updated   / seconds AS tup_updated_rate,
+        tup_deleted   / seconds AS tup_deleted_rate,
+        temp_files    / seconds AS temp_files_rate,
+        temp_bytes    / seconds AS temp_bytes_rate,
+        CASE WHEN (temp_files) > 0
+            THEN temp_bytes / temp_files
+            ELSE 0 END AS temp_avg_file,
+        CASE WHEN (blk_read_time + blk_write_time) > 0
+            THEN 100 * blk_read_time / (blk_read_time + blk_write_time)
+            ELSE 0 END AS blk_read_to_write_pct,
+        CASE WHEN (blks_read) > 0
+            THEN 1000 * blk_read_time / blks_read 
+            ELSE 0 END AS avg_blk_read_time_ms,
+        blk_read_time
+        -- TODO Is there a better denominator for this one?
+        blk_write_time,
+        conflicts,
+        deadlocks,
+        conflicts     / seconds AS conflicts_rate,
+        deadlocks     / seconds AS deadlocks_rate,
         checksum_failures,
         checksum_last_failure,
-        CASE WHEN (blks_read) > 0
-            THEN blk_read_time / blks_read 
-            ELSE 0 END AS avg_blk_read_time,
-        -- TODO What's the right denominator for this one?
-        blk_write_time,
         stats_reset
     FROM db;
 
--- SELECT * from pgg_data_database;
+-- SELECT * from pgg_stat_database;
 -- SELECT * from pgb_stat_database;
-
