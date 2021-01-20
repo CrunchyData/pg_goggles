@@ -51,20 +51,25 @@ CREATE OR REPLACE VIEW pgb_stat_bgwriter AS
             THEN ROUND(seconds / 60 / (checkpoints_timed + checkpoints_req),3)
             ELSE 0 END AS minutes_to_checkpoint,
         ROUND(8192 * buffers_alloc      / seconds,3) AS alloc_byte_rate,
-        ROUND(8192 * (buffers_checkpoint + buffers_clean + buffers_backend) / seconds,3) AS total_write_byte_rate,
+        ROUND(8192 * (buffers_checkpoint + buffers_clean + buffers_backend) / seconds,3) AS write_byte_rate,
         ROUND(8192 * buffers_checkpoint / seconds,3) AS checkpoint_byte_rate,
         ROUND(8192 * buffers_clean      / seconds,3) AS clean_byte_rate,
         ROUND(8192 * buffers_backend    / seconds,3) AS backend_byte_rate,
         checkpoint_write_time,
         checkpoint_sync_time,
-        ROUND(1000 * checkpoint_write_time::numeric / buffers_checkpoint,3) AS checkpoint_write_avg_ms,
-        ROUND(1000 * checkpoint_sync_time::numeric  / buffers_checkpoint,3) AS checkpoint_sync_avg_ms,
+        CASE WHEN (buffers_checkpoint) > 0
+            THEN ROUND(checkpoint_write_time::numeric / buffers_checkpoint,3)
+            ELSE 0 END AS checkpoint_write_avg,
+        CASE WHEN (buffers_checkpoint) > 0
+            THEN ROUND(checkpoint_sync_time::numeric  / buffers_checkpoint,3)
+            ELSE 0 END AS checkpoint_sync_avg,
         ROUND(maxwritten_clean / seconds,3) AS max_clean_rate,
         8192 * buffers_backend_fsync AS bytes_backend_fsync
     FROM bgw
     ;
 
 -- Rate oriented view.  Recommended units with MB/s.
+-- TODO Better suffix than "mbps"?
 -- TODO Rewrite this to be based on byte version?
 DROP VIEW IF EXISTS pgr_stat_bgwriter CASCADE;
 CREATE OR REPLACE VIEW pgr_stat_bgwriter AS
@@ -174,10 +179,10 @@ CREATE OR REPLACE VIEW pgb_stat_database AS
         xact_commit, xact_rollback,
         xact_commit   / seconds AS xact_commit_rate,
         xact_rollback / seconds AS xact_rollback_rate,
-        current_setting('block_size')::numeric * blks_read AS bytes_read,
-        current_setting('block_size')::numeric * blks_read / seconds AS bytes_read_rate,
         current_setting('block_size')::numeric * blks_hit AS bytes_hit,
+        current_setting('block_size')::numeric * blks_read AS bytes_read,
         current_setting('block_size')::numeric * blks_hit / seconds AS bytes_hit_rate,
+        current_setting('block_size')::numeric * blks_read / seconds AS bytes_read_rate,
         tup_returned, tup_fetched, tup_inserted,  tup_updated, tup_deleted,
         tup_returned  / seconds AS tup_returned_rate,
         tup_fetched   / seconds AS tup_fetched_rate,
@@ -186,18 +191,18 @@ CREATE OR REPLACE VIEW pgb_stat_database AS
         tup_deleted   / seconds AS tup_deleted_rate,
         temp_files    / seconds AS temp_files_rate,
         temp_bytes    / seconds AS temp_bytes_rate,
-        CASE WHEN (temp_files) > 0
+        CASE WHEN temp_files > 0
             THEN temp_bytes / temp_files
-            ELSE 0 END AS temp_avg_file,
-        CASE WHEN (blk_read_time + blk_write_time) > 0
-            THEN 100 * blk_read_time / (blk_read_time + blk_write_time)
-            ELSE 0 END AS blk_read_to_write_pct,
-        CASE WHEN (blks_read) > 0
-            THEN 1000 * blk_read_time / blks_read 
-            ELSE 0 END AS avg_blk_read_time_ms,
-        blk_read_time
+            ELSE 0 END AS temp_file_avg,
+        blk_read_time,
         -- TODO Is there a better denominator for this one?
         blk_write_time,
+        CASE WHEN (blk_read_time + blk_write_time) > 0
+            THEN 100 * blk_read_time / (blk_read_time + blk_write_time)
+            ELSE 0 END AS blk_read_pct,
+        CASE WHEN blks_read > 0
+            THEN blk_read_time / blks_read
+            ELSE 0 END AS blks_read_avg,
         conflicts,
         deadlocks,
         conflicts     / seconds AS conflicts_rate,

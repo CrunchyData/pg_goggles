@@ -1,6 +1,18 @@
-# pg_goggles
-
+# pg_goggle
 _pg\_goggles_ provides better annotated and summarized views into the database's cryptic internal counters.  These are intended for systems where access to the database port (typically 5432) is routine.
+
+# Usage
+
+The goggles views use a single letter code after the "pg" to select which type of view:
+
+* G - pgg_stat:  Goggles view, basic.  Pages and buffers are decoded into bytes.  Highly useful catalog data is added.
+* B - pgb_stat:  Byte rate.  Rates are bytes per second or event/second unless otherwise labeled.  Times are in seconds.  Suitable for further machine parsing and processing.
+* R - pgr_stat:  Rate re-scaled to suggested units.  This may use MB/s for some values and times in milliseconds for others.
+* P - pgp_stat:  Pretty print.  Use pg_size_pretty() to help scale large values.
+
+# Example
+
+
 
 # Background
 
