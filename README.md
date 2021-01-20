@@ -1,6 +1,6 @@
 # pg_goggles
 
-_pg\_goggles_ provides better annotated and summarized views into the database's cryptic internal counters.  These are intended for systems where access to the database port (typically 5432) is routine.
+_pg\_goggles_ provides better annotated and summarized views into the database's cryptic internal counters.  These are intended for systems where access to the database port (typically 5432) is routine.  The views should supplement a full long-term metrics monitoring solution rather than replace it.
 
 # Usage
 
@@ -69,16 +69,20 @@ Completed views:
 
 * _pg\_stat\_bgwriter_, _pg\_stat\_database_.
 
-Planned future additions:
+Targets for near future development:
 
-* _pg\_tables_, _pg\_stat\_all\_tables_, _pg\_statio\_all\_tables_:  Convert to byte units.
+* _pg\_stat\_statements_:   Switch to bytes/MiB and provide a rate version.
+Planned future additions:
+* _pg\_tables_, _pg\_stat\_all\_tables_, _pg\_statio\_all\_tables_:  Convert to byte units, rate versions.
 * _pg\_indexes_, _pg\_stat\_all\_indexes_, _pg\_statio\_all\_indexes_:  Conbert to byte units.
-* _pg\_relations_:  Combined table+index view.
 * _pg\_settings_:  Numeric values should be easier to lookup.
 * _pg\_locks_:  Include the standard recursive lock nagivator.
 * _pg\_stat\_activity_:  Might improve on waiting information.
 
-Eventually _pg\_goggles_ may expand to where it's packaged in an extension for easier testing and use.
+Future views:
+* _pg\_stat\_relations_:  Combined table and index view.
+
+Eventually _pg\_goggles_ may expand to where it's packaged in an extension or some other form for easier testing and use.
 
 # Credits
 
