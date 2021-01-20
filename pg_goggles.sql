@@ -4,8 +4,8 @@
 -- Buffers are 8192 bytes.
 -- Page size is adjustable at compile time, and some commercial distributions (EDB, others) did 16K block PG releases at one point.
 
--- All "rates" are bytes per second or event/second unless otherwise labeled.
--- Some rates go through PG pretty print
+-- All "rates" are labeled in bytes/MiB per second or event/second unless otherwise labeled.
+-- Some rates go through PG pretty print.
 
 -- Goggles enhanced view
 DROP VIEW IF EXISTS pgg_stat_bgwriter CASCADE;
@@ -50,11 +50,11 @@ CREATE OR REPLACE VIEW pgb_stat_bgwriter AS
         CASE WHEN (checkpoints_timed + checkpoints_req) > 0
             THEN ROUND(seconds / 60 / (checkpoints_timed + checkpoints_req),3)
             ELSE 0 END AS minutes_to_checkpoint,
-        ROUND(8192 * buffers_alloc      / seconds,3) AS alloc_byte_rate,
-        ROUND(8192 * (buffers_checkpoint + buffers_clean + buffers_backend) / seconds,3) AS write_byte_rate,
-        ROUND(8192 * buffers_checkpoint / seconds,3) AS checkpoint_byte_rate,
-        ROUND(8192 * buffers_clean      / seconds,3) AS clean_byte_rate,
-        ROUND(8192 * buffers_backend    / seconds,3) AS backend_byte_rate,
+        ROUND(8192 * buffers_alloc      / seconds,3) AS alloc_rate_byte,
+        ROUND(8192 * (buffers_checkpoint + buffers_clean + buffers_backend) / seconds,3) AS write_rate_byte,
+        ROUND(8192 * buffers_checkpoint / seconds,3) AS checkpoint_rate_byte,
+        ROUND(8192 * buffers_clean      / seconds,3) AS clean_rate_byte,
+        ROUND(8192 * buffers_backend    / seconds,3) AS backend_rate_byte,
         checkpoint_write_time,
         checkpoint_sync_time,
         CASE WHEN (buffers_checkpoint) > 0
@@ -68,8 +68,7 @@ CREATE OR REPLACE VIEW pgb_stat_bgwriter AS
     FROM bgw
     ;
 
--- Rate oriented view.  Recommended units with MB/s.
--- TODO Better suffix than "mbps"?
+-- Rate oriented view.  Recommended units.
 -- TODO Rewrite this to be based on byte version?
 DROP VIEW IF EXISTS pgr_stat_bgwriter CASCADE;
 CREATE OR REPLACE VIEW pgr_stat_bgwriter AS
@@ -87,24 +86,24 @@ CREATE OR REPLACE VIEW pgr_stat_bgwriter AS
         runtime,
         checkpoints_timed,checkpoints_req,
         CASE WHEN (checkpoints_timed + checkpoints_req) > 0
-            THEN round((100 * checkpoints_timed / (checkpoints_timed + checkpoints_req))::numeric,3)
+            THEN ROUND((100 * checkpoints_timed / (checkpoints_timed + checkpoints_req))::numeric,3)
             ELSE 0 END AS checkpoint_timed_pct,
         CASE WHEN (checkpoints_timed + checkpoints_req) > 0
-            THEN round(seconds / 60 / (checkpoints_timed + checkpoints_req),3)
+            THEN ROUND(seconds / 60 / (checkpoints_timed + checkpoints_req),3)
             ELSE 0 END AS minutes_to_checkpoint,
-        round(8192 * buffers_alloc      / (1024 * 1024 * seconds),3) AS alloc_mbps,
-        round(8192 * (buffers_checkpoint + buffers_clean + buffers_backend) / (1024 * 1024 * seconds),3) AS total_write_mbps,
-        round(8192 * buffers_checkpoint / (1024 * 1024 * seconds),3) AS checkpoint_mbps,
-        round(8192 * buffers_clean      / (1024 * 1024 * seconds),3) AS clean_mbps,
-        round(8192 * buffers_backend    / (1024 * 1024 * seconds),3) AS backend_mbps,
-        round((1000 * checkpoint_write_time / buffers_checkpoint)::numeric,3) AS avg_chkp_write_ms,
-        round((1000 * checkpoint_sync_time  / buffers_checkpoint)::numeric,3) AS avg_chkp_sync_ms,
-        round(maxwritten_clean / seconds,3) AS max_clean_rate,
+        ROUND(8192 * buffers_alloc      / (1024 * 1024 * seconds),3) AS alloc_rate_mib,
+        ROUND(8192 * (buffers_checkpoint + buffers_clean + buffers_backend) / (1024 * 1024 * seconds),3) AS total_write_rate_mib,
+        ROUND(8192 * buffers_checkpoint / (1024 * 1024 * seconds),3) AS checkpoint_rate_mib,
+        ROUND(8192 * buffers_clean      / (1024 * 1024 * seconds),3) AS clean_rate_mib,
+        ROUND(8192 * buffers_backend    / (1024 * 1024 * seconds),3) AS backend_rate_mib,
+        ROUND((1000 * checkpoint_write_time / buffers_checkpoint)::numeric,3) AS avg_chkp_write_ms,
+        ROUND((1000 * checkpoint_sync_time  / buffers_checkpoint)::numeric,3) AS avg_chkp_sync_ms,
+        ROUND(maxwritten_clean / seconds,3) AS max_clean_rate,
         8192 * buffers_backend_fsync AS bytes_backend_fsync
     FROM bgw
     ;
 
--- Pretty view.
+-- Pretty view TBD.
 -- Boring for bgwriter, but very useful for relation level data
 DROP VIEW IF EXISTS pgp_stat_bgwriter CASCADE;
 CREATE OR REPLACE VIEW pgp_stat_bgwriter AS
@@ -117,7 +116,6 @@ CREATE OR REPLACE VIEW pgp_stat_bgwriter AS
 -- SELECT * FROM pgb_stat_bgwriter;
 -- SELECT * FROM pgr_stat_bgwriter;
 -- SELECT * FROM pgp_stat_bgwriter;
-
 
 --
 -- Database
@@ -158,7 +156,7 @@ CREATE OR REPLACE VIEW pgg_stat_database AS
         SELECT oid, datname FROM pg_database
     ) D;
 
--- Byte rate oriented view
+-- Byte rate oriented view, only includes current database
 DROP VIEW IF EXISTS pgb_stat_database CASCADE;
 CREATE OR REPLACE VIEW pgb_stat_database AS
     WITH db AS (
@@ -179,23 +177,23 @@ CREATE OR REPLACE VIEW pgb_stat_database AS
         xact_commit, xact_rollback,
         xact_commit   / seconds AS xact_commit_rate,
         xact_rollback / seconds AS xact_rollback_rate,
-        current_setting('block_size')::numeric * blks_hit AS bytes_hit,
-        current_setting('block_size')::numeric * blks_read AS bytes_read,
-        current_setting('block_size')::numeric * blks_hit / seconds AS hit_rate,
-        current_setting('block_size')::numeric * blks_read / seconds AS read_rate,
+        current_setting('block_size')::numeric * blks_hit AS hit_bytes,
+        current_setting('block_size')::numeric * blks_read AS read_bytes,
+        current_setting('block_size')::numeric * blks_hit / seconds AS hit_rate_bytes,
+        current_setting('block_size')::numeric * blks_read / seconds AS read_rate_bytes,
         tup_returned, tup_fetched, tup_inserted,  tup_updated, tup_deleted,
         tup_returned  / seconds AS tup_returned_rate,
         tup_fetched   / seconds AS tup_fetched_rate,
         tup_inserted  / seconds AS tup_inserted_rate,
         tup_updated   / seconds AS tup_updated_rate,
         tup_deleted   / seconds AS tup_deleted_rate,
-        temp_files    / seconds AS temp_files_rate,
-        temp_bytes    / seconds AS temp_bytes_rate,
+        temp_files    / seconds AS temp_rate_files,
+        temp_bytes    / seconds AS temp_rate_bytes,
         CASE WHEN temp_files > 0
             THEN temp_bytes / temp_files
             ELSE 0 END AS temp_file_avg,
         blk_read_time,
-        -- TODO Is there a better denominator for this one?
+        -- TODO Is there a denominator for blk_write_time that's effectively blks_write?
         blk_write_time,
         CASE WHEN (blk_read_time + blk_write_time) > 0
             THEN 100 * blk_read_time / (blk_read_time + blk_write_time)
@@ -212,5 +210,18 @@ CREATE OR REPLACE VIEW pgb_stat_database AS
         stats_reset
     FROM db;
 
--- SELECT * from pgg_stat_database;
--- SELECT * from pgb_stat_database;
+-- TODO build this based on pgb view.  Too much logic in that to write this starting with system view.
+DROP VIEW IF EXISTS pgr_stat_database CASCADE;
+CREATE OR REPLACE VIEW pgr_stat_database AS
+    SELECT * FROM pgb_stat_database;
+
+DROP VIEW IF EXISTS pgp_stat_database CASCADE;
+CREATE OR REPLACE VIEW pgp_stat_database AS
+    SELECT * FROM pgb_stat_database;
+
+-- Testing
+-- SELECT * FROM pgg_stat_database;
+-- SELECT * FROM pgb_stat_database;
+-- SELECT * FROM pgr_stat_database;
+-- SELECT * FROM pgp_stat_database;
+
