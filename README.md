@@ -1,4 +1,5 @@
-# pg_goggle
+# pg_goggles
+
 _pg\_goggles_ provides better annotated and summarized views into the database's cryptic internal counters.  These are intended for systems where access to the database port (typically 5432) is routine.
 
 # Usage
@@ -8,7 +9,7 @@ The goggles views use a single letter code after the "pg" to select which type o
 * G - `pgg_stat`:  `Goggles` view, basic.  Pages and buffers are decoded into bytes.  Highly useful catalog data is added.  Fields are renamed with minimal changes, so that the pgg version of the view can be swapped in for scripts using the regular one with minimal changes.
 * B - `pgb_stat`:  `Byte` rate.  Rates are bytes per second or event/second unless otherwise labeled.  Times are in seconds.  The formatting for some fields is reordered to make byte/MiB units at the end.  Suitable for further machine parsing and processing.
 * R - `pgr_stat`:  `Rate` scaled to suggested units for administrator use.  This may use megabytes/second (MB/s) for some values and times in milliseconds for others.
-* P - `pgp_stat`:  `Pretty` print of rate view.  Uses _pg\_size\_pretty()__ to help scale large values.  This view is not easily machine readable; use the _pgr_ version for that instead.
+* P - `pgp_stat`:  `Pretty` print of rate view.  Uses _pg\_size\_pretty()_ to help scale large values.  This view is not easily machine readable; use the _pgr_ version for that instead.
 
 # Examples
 
@@ -60,22 +61,24 @@ PostgreSQL comes with some basic built-in system metrics in its [src/backend/cat
 
 By nature of core PostgreSQL's mandate not to ship management tools with GUI interfaces itself, the scope for these views is limited.  But there's nothing stopping someone from building better but still text system views.  Everyone who administers PostgreSQL systems have some of these views around, little report queries like ["Least Used Index"](https://wiki.postgresql.org/wiki/Index_Maintenance) and such.  Some of them live on the [wiki snippets](https://wiki.postgresql.org/wiki/Category:Snippets), others in the logic of tools like the [check_postgres](https://bucardo.org/check_postgres/) Nagios plug-in.
 
-PostgreSQL has a whole list of [https://wiki.postgresql.org/wiki/Monitoring](monitoring projects).  There isn't a great route for them to contribute improved views from all those toolkits back into core.  It's a big project to grade the summary options, prove they are useful, and stand by their value.  _pg\_goggles_ is that project.
+PostgreSQL has a whole list of [monitoring projects](https://wiki.postgresql.org/wiki/Monitoring).  There isn't a great route for them to contribute improved views from all these toolkits back into core.  It's a big project to grade the summary options, prove they are useful, and stand by their value.  _pg\_goggles_ is that project.
 
 # Scope
 
 Completed views:
 
-* pg_stat_bgwriter, pg_stat_database.
+* _pg\_stat\_bgwriter_, _pg\_stat\_database_.
 
 Planned future additions:
 
-* pg_tables, pg_stat_all_tables, pg_statio_all_tables:  Convert to byte units.
-* pg_indexes, pg_stat_all_indexes, pg_statio_all_indexes:  Conbert to byte units.
-* pg_relations:  Combined table+index view.
-* pg_settings:  Numeric values should be easier to lookup.
-* pg_locks:  Include the standard recursive lock nagivator.
-* pg_stat_activity:  Might improve on waiting information.
+* _pg\_tables_, _pg\_stat\_all\_tables_, _pg\_statio\_all\_tables_:  Convert to byte units.
+* _pg\_indexes_, _pg\_stat\_all\_indexes_, _pg\_statio\_all\_indexes_:  Conbert to byte units.
+* _pg\_relations_:  Combined table+index view.
+* _pg\_settings_:  Numeric values should be easier to lookup.
+* _pg\_locks_:  Include the standard recursive lock nagivator.
+* _pg\_stat\_activity_:  Might improve on waiting information.
+
+Eventually _pg\_goggles_ may expand to where it's packaged in an extension for easier testing and use.
 
 # Credits
 
