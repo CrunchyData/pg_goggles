@@ -210,10 +210,29 @@ CREATE OR REPLACE VIEW pgb_stat_database AS
         stats_reset
     FROM db;
 
--- TODO build this based on pgb view.  Too much logic in that to write this starting with system view.
+-- Build rate view from bytes, too much logic in pgb view to write this starting with system view.
 DROP VIEW IF EXISTS pgr_stat_database CASCADE;
 CREATE OR REPLACE VIEW pgr_stat_database AS
-    SELECT * FROM pgb_stat_database;
+    SELECT
+      sample,
+      stats_reset,
+      runtime,
+      ROUND(xact_commit_rate,3) AS xact_commit_rate,
+      ROUND(xact_rollback_rate,3) AS xact_rollback_rate,
+      ROUND(tup_returned_rate,3) AS tup_returned_rate,
+      ROUND(tup_fetched_rate,3) AS tup_fetched_rate,
+      ROUND(tup_inserted_rate,3) AS tup_inserted_rate,
+      ROUND(tup_updated_rate,3) AS tup_updated_rate,
+      ROUND(tup_deleted_rate,3) AS tup_deleted_rate,
+      ROUND(hit_rate_bytes / (1024*1024),3) AS hit_rate_mib,
+      ROUND(read_rate_bytes / (1024*1024),3) AS read_rate_mib,
+      ROUND(1000 * blk_write_time::numeric,3) AS blk_write_ms,
+      ROUND(1000 * blk_read_time::numeric,3) AS blk_read_ms,
+      ROUND(blk_read_pct::numeric,3) AS blk_read_pct,
+      ROUND(1000 * blks_read_avg::numeric,3) AS blks_read_ms_avg,
+      temp_file_avg,
+      ROUND(temp_rate_bytes / (1024*1024),3) AS temp_rate_mib
+    FROM pgb_stat_database;
 
 DROP VIEW IF EXISTS pgp_stat_database CASCADE;
 CREATE OR REPLACE VIEW pgp_stat_database AS

@@ -1,4 +1,4 @@
-# pg_goggles
+# Intro
 
 _pg\_goggles_ provides better annotated and summarized views into the database's cryptic internal counters.  These are intended for systems where access to the database port (typically 5432) is routine.  The views should supplement a full long-term metrics monitoring solution rather than replace it.
 
@@ -6,7 +6,7 @@ _pg\_goggles_ provides better annotated and summarized views into the database's
 
 The goggles views use a single letter code after the "pg" to select which type of view:
 
-* G - `pgg_stat`:  `Goggles` view, basic.  Pages and buffers are decoded into bytes.  Highly useful catalog data is added.  Fields are renamed with minimal changes, so that the pgg version of the view can be swapped in for scripts using the regular one with minimal changes.
+* G - `pgg_stat`:  `Goggles` basic view.  Pages and buffers are decoded into bytes.  Highly useful catalog data is added.  Fields are renamed with minimal changes, so that the pgg version of the view can be swapped in for scripts using the regular one with minimal changes.
 * B - `pgb_stat`:  `Byte` rate.  Rates are bytes per second or event/second unless otherwise labeled.  Times are in seconds.  The formatting for some fields is reordered to make byte/MiB units at the end.  Suitable for further machine parsing and processing.
 * R - `pgr_stat`:  `Rate` scaled to suggested units for administrator use.  This may use megabytes/second (MB/s) for some values and times in milliseconds for others.
 * P - `pgp_stat`:  `Pretty` print of rate view.  Uses _pg\_size\_pretty()_ to help scale large values.  This view is not easily machine readable; use the _pgr_ version for that instead.
@@ -35,7 +35,7 @@ Byte rate:
     max_clean_rate        | 1.466
     bytes_backend_fsync   | 0
 
-Rate version with mega/milli prefix scaling to put units in the right range for human review.  _mib\_rate_ is a 1024-based megabyte per second (MiB/s) value:
+Rate version with mega/milli prefix scaling to put units in the right range for human review.  _rate\_mib_ is a 1024-based megabyte per second (MiB/s) value:
 
     gis=# select * from pgr_stat_bgwriter;
     -[ RECORD 1 ]---------+------------------------------
@@ -54,6 +54,8 @@ Rate version with mega/milli prefix scaling to put units in the right range for 
     avg_chkp_sync_ms      | 2.945
     max_clean_rate        | 1.465
     bytes_backend_fsync   | 0
+
+Allocation is when the database initializes a new buffer to hold 8K of data.   The write total here considers only the writes listed below it:  checkpoints, the background cleaner, and client backends writing dirty data themselves.  Other sources of database writes include temporary files (accounted at the database level), the write-ahead log (probably worth its own Goggles view), and low volume metadata like the Commit Log (_pg\_clog_ directory).
 
 # Background
 
@@ -86,4 +88,4 @@ Eventually _pg\_goggles_ may expand to where it's packaged in an extension or so
 
 # Credits
 
-The PostgreSQL benchmarking work that lead to this project was sponsored by a year long R&D effort within Crunchy Data led by Greg Smith.
+The PostgreSQL benchmarking work that lead to this project was sponsored by a year long R&D effort within Crunchy Data led by Greg Smith.  The name was inspired by the song ["Rose Coloured Glasses"](https://www.youtube.com/watch?v=Gp8knr8Ho-4) from the band Animal Logic's second album playing during development.
