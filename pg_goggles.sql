@@ -93,14 +93,14 @@ CREATE OR REPLACE VIEW pgr_stat_bgwriter AS
             THEN round(seconds / 60 / (checkpoints_timed + checkpoints_req),3)
             ELSE 0 END AS minutes_to_checkpoint,
         round(8192 * buffers_alloc      / (1024 * 1024 * seconds),3) AS alloc_mbps,
+        round(8192 * (buffers_checkpoint + buffers_clean + buffers_backend) / (1024 * 1024 * seconds),3) AS total_write_mbps,
         round(8192 * buffers_checkpoint / (1024 * 1024 * seconds),3) AS checkpoint_mbps,
         round(8192 * buffers_clean      / (1024 * 1024 * seconds),3) AS clean_mbps,
         round(8192 * buffers_backend    / (1024 * 1024 * seconds),3) AS backend_mbps,
-        round(8192 * (buffers_checkpoint + buffers_clean + buffers_backend) / (1024 * 1024 * seconds),3) AS total_write_mbps,
-        round(maxwritten_clean / seconds,3) AS max_clean_rate,
-        8192 * buffers_backend_fsync AS bytes_backend_fsync,
         round((1000 * checkpoint_write_time / buffers_checkpoint)::numeric,3) AS avg_chkp_write_ms,
         round((1000 * checkpoint_sync_time  / buffers_checkpoint)::numeric,3) AS avg_chkp_sync_ms
+        round(maxwritten_clean / seconds,3) AS max_clean_rate,
+        8192 * buffers_backend_fsync AS bytes_backend_fsync,
     FROM bgw
     ;
 
@@ -181,8 +181,8 @@ CREATE OR REPLACE VIEW pgb_stat_database AS
         xact_rollback / seconds AS xact_rollback_rate,
         current_setting('block_size')::numeric * blks_hit AS bytes_hit,
         current_setting('block_size')::numeric * blks_read AS bytes_read,
-        current_setting('block_size')::numeric * blks_hit / seconds AS bytes_hit_rate,
-        current_setting('block_size')::numeric * blks_read / seconds AS bytes_read_rate,
+        current_setting('block_size')::numeric * blks_hit / seconds AS hit_rate,
+        current_setting('block_size')::numeric * blks_read / seconds AS read_rate,
         tup_returned, tup_fetched, tup_inserted,  tup_updated, tup_deleted,
         tup_returned  / seconds AS tup_returned_rate,
         tup_fetched   / seconds AS tup_fetched_rate,
