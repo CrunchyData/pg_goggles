@@ -12,7 +12,47 @@ The goggles views use a single letter code after the "pg" to select which type o
 
 # Example
 
+Byte rate:
 
+    gis=# \x
+    Expanded display is on.
+    gis=# select * from pgb_stat_bgwriter;
+    -[ RECORD 1 ]---------+------------------------------
+    sample                | 2021-01-20 04:14:37.272058-05
+    runtime               | 09:21:35.39257
+    checkpoint_timed_pct  | 63.000
+    minutes_to_checkpoint | 51.054
+    alloc_byte_rate       | 22117176.395
+    write_byte_rate       | 69419953.093
+    checkpoint_byte_rate  | 3226021.125
+    clean_byte_rate       | 17072286.486
+    backend_byte_rate     | 49121645.482
+    checkpoint_write_time | 9243341
+    checkpoint_sync_time  | 21670
+    checkpoint_write_avg  | 0.697
+    checkpoint_sync_avg   | 0.002
+    max_clean_rate        | 0.995
+    bytes_backend_fsync   | 0
+
+Rate version with MB/ms:
+
+    gis=# select * from pgr_stat_bgwriter;
+    -[ RECORD 1 ]---------+------------------------------
+    sample                | 2021-01-20 04:17:52.251859-05
+    runtime               | 09:24:50.372371
+    checkpoints_timed     | 7
+    checkpoints_req       | 5
+    checkpoint_timed_pct  | 58.000
+    minutes_to_checkpoint | 47.070
+    alloc_mbps            | 21.121
+    checkpoint_mbps       | 3.280
+    clean_mbps            | 16.259
+    backend_mbps          | 47.653
+    total_write_mbps      | 67.192
+    max_clean_rate        | 0.990
+    bytes_backend_fsync   | 0
+    avg_chkp_write_ms     | 649.621
+    avg_chkp_sync_ms      | 1.523
 
 # Background
 
