@@ -98,9 +98,9 @@ CREATE OR REPLACE VIEW pgr_stat_bgwriter AS
         round(8192 * buffers_clean      / (1024 * 1024 * seconds),3) AS clean_mbps,
         round(8192 * buffers_backend    / (1024 * 1024 * seconds),3) AS backend_mbps,
         round((1000 * checkpoint_write_time / buffers_checkpoint)::numeric,3) AS avg_chkp_write_ms,
-        round((1000 * checkpoint_sync_time  / buffers_checkpoint)::numeric,3) AS avg_chkp_sync_ms
+        round((1000 * checkpoint_sync_time  / buffers_checkpoint)::numeric,3) AS avg_chkp_sync_ms,
         round(maxwritten_clean / seconds,3) AS max_clean_rate,
-        8192 * buffers_backend_fsync AS bytes_backend_fsync,
+        8192 * buffers_backend_fsync AS bytes_backend_fsync
     FROM bgw
     ;
 
