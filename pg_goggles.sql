@@ -69,7 +69,7 @@ CREATE OR REPLACE VIEW pgb_stat_bgwriter AS
     ;
 
 -- Rate oriented view.  Recommended units.
--- TODO Rewrite this to be based on byte version?
+-- TODO Might rewrite this to be based on byte version.
 DROP VIEW IF EXISTS pgr_stat_bgwriter CASCADE;
 CREATE OR REPLACE VIEW pgr_stat_bgwriter AS
     WITH bgw AS (
@@ -156,7 +156,7 @@ CREATE OR REPLACE VIEW pgg_stat_database AS
         SELECT oid, datname FROM pg_database
     ) D;
 
--- Byte rate oriented view, only includes current database
+-- Byte rate oriented view.  Only includes current database.
 DROP VIEW IF EXISTS pgb_stat_database CASCADE;
 CREATE OR REPLACE VIEW pgb_stat_database AS
     WITH db AS (
@@ -200,7 +200,7 @@ CREATE OR REPLACE VIEW pgb_stat_database AS
             ELSE 0 END AS blk_read_pct,
         CASE WHEN blks_read > 0
             THEN blk_read_time / blks_read
-            ELSE 0 END AS blks_read_avg,
+            ELSE 0 END AS blk_read_avg,
         conflicts,
         deadlocks,
         conflicts     / seconds AS conflicts_rate,
@@ -210,28 +210,28 @@ CREATE OR REPLACE VIEW pgb_stat_database AS
         stats_reset
     FROM db;
 
--- Build rate view from bytes, too much logic in pgb view to write this starting with system view.
+-- Build rate view from bytes.  Too much logic in pgb view to write this starting with system view.
+-- TODO Add some sort of read/write percentages to the tuple data.
 DROP VIEW IF EXISTS pgr_stat_database CASCADE;
 CREATE OR REPLACE VIEW pgr_stat_database AS
     SELECT
       sample,
-      stats_reset,
       runtime,
-      ROUND(xact_commit_rate,3) AS xact_commit_rate,
-      ROUND(xact_rollback_rate,3) AS xact_rollback_rate,
       ROUND(tup_returned_rate,3) AS tup_returned_rate,
       ROUND(tup_fetched_rate,3) AS tup_fetched_rate,
       ROUND(tup_inserted_rate,3) AS tup_inserted_rate,
       ROUND(tup_updated_rate,3) AS tup_updated_rate,
       ROUND(tup_deleted_rate,3) AS tup_deleted_rate,
+      temp_file_avg,
+      ROUND(temp_rate_bytes / (1024*1024),3) AS temp_rate_mib,
       ROUND(hit_rate_bytes / (1024*1024),3) AS hit_rate_mib,
       ROUND(read_rate_bytes / (1024*1024),3) AS read_rate_mib,
-      ROUND(1000 * blk_write_time::numeric,3) AS blk_write_ms,
-      ROUND(1000 * blk_read_time::numeric,3) AS blk_read_ms,
       ROUND(blk_read_pct::numeric,3) AS blk_read_pct,
-      ROUND(1000 * blks_read_avg::numeric,3) AS blks_read_ms_avg,
-      temp_file_avg,
-      ROUND(temp_rate_bytes / (1024*1024),3) AS temp_rate_mib
+      ROUND(1000 * blk_read_avg::numeric,3) AS blk_read_avg_ms,
+      ROUND(blk_read_time::numeric,3) AS blk_read_time,
+      ROUND(blk_write_time::numeric,3) AS blk_write_time,
+      ROUND(xact_commit_rate,3) AS xact_commit_rate,
+      ROUND(xact_rollback_rate,3) AS xact_rollback_rate
     FROM pgb_stat_database;
 
 DROP VIEW IF EXISTS pgp_stat_database CASCADE;
