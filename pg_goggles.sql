@@ -59,7 +59,7 @@ CREATE OR REPLACE VIEW pgb_stat_bgwriter AS
         checkpoint_sync_time,
         ROUND(1000 * checkpoint_write_time::numeric / buffers_checkpoint,3) AS checkpoint_write_avg_ms,
         ROUND(1000 * checkpoint_sync_time::numeric  / buffers_checkpoint,3) AS checkpoint_sync_avg_ms,
-        ROUND(maxwritten_clean / seconds,3) AS max_clean_per_sec,
+        ROUND(maxwritten_clean / seconds,3) AS max_clean_rate,
         8192 * buffers_backend_fsync AS bytes_backend_fsync
     FROM bgw
     ;
@@ -92,7 +92,7 @@ CREATE OR REPLACE VIEW pgr_stat_bgwriter AS
         round(8192 * buffers_clean      / (1024 * 1024 * seconds),3) AS clean_mbps,
         round(8192 * buffers_backend    / (1024 * 1024 * seconds),3) AS backend_mbps,
         round(8192 * (buffers_checkpoint + buffers_clean + buffers_backend) / (1024 * 1024 * seconds),3) AS total_write_mbps,
-        round(maxwritten_clean / seconds,3) AS max_clean_per_sec,
+        round(maxwritten_clean / seconds,3) AS max_clean_rate,
         8192 * buffers_backend_fsync AS bytes_backend_fsync,
         round((1000 * checkpoint_write_time / buffers_checkpoint)::numeric,3) AS avg_chkp_write_ms,
         round((1000 * checkpoint_sync_time  / buffers_checkpoint)::numeric,3) AS avg_chkp_sync_ms
@@ -172,15 +172,15 @@ CREATE OR REPLACE VIEW pgb_stat_database AS
         runtime,
         datid, datname, 
         xact_commit, xact_rollback,
-        xact_commit   / seconds AS xact_commit_per_sec,
-        xact_rollback / seconds AS xact_rollback_per_sec,
+        xact_commit   / seconds AS xact_commit_rate,
+        xact_rollback / seconds AS xact_rollback_rate,
         current_setting('block_size')::numeric * blks_read AS bytes_read,
-        current_setting('block_size')::numeric * blks_read / seconds AS bytes_read_per_sec,
+        current_setting('block_size')::numeric * blks_read / seconds AS bytes_read_rate,
         current_setting('block_size')::numeric * blks_hit AS bytes_hit,
-        current_setting('block_size')::numeric * blks_hit / seconds AS bytes_hit_per_sec,
+        current_setting('block_size')::numeric * blks_hit / seconds AS bytes_hit_rate,
         tup_returned, tup_fetched, tup_inserted,  tup_updated, tup_deleted,
         tup_returned  / seconds AS tup_returned_rate,
-        tup_fetched   / seconds AS tup_fetched_per_sec,
+        tup_fetched   / seconds AS tup_fetched_rate,
         tup_inserted  / seconds AS tup_inserted_rate,
         tup_updated   / seconds AS tup_updated_rate,
         tup_deleted   / seconds AS tup_deleted_rate,
