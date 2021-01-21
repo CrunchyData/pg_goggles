@@ -271,3 +271,28 @@ CREATE VIEW pgg_statio_all_tables AS
 --            N.schemaname NOT IN ('pg_catalog', 'information_schema') AND
 --            N.schemaname !~ '^pg_toast'
     GROUP BY C.oid, N.nspname, C.relname, T.oid, X.indexrelid;
+
+DROP VIEW IF EXISTS pgg_settings;
+CREATE OR REPLACE VIEW pgg_settings AS
+    SELECT
+        name,
+        current_setting(name) AS setting,
+        CASE
+            WHEN unit='B' THEN setting::numeric
+            WHEN unit='8kB' THEN setting::numeric * 8192
+            WHEN unit='kB' THEN setting::numeric * 1024
+            WHEN unit='MB' THEN setting::numeric * 1024 * 1024
+            WHEN unit='s' THEN setting::numeric
+            WHEN unit='ms' THEN round(setting::numeric / 1000,3)
+            WHEN unit='min' THEN setting::numeric * 60
+            WHEN unit IS NULL AND vartype='integer' THEN setting::numeric
+            WHEN unit IS NULL AND vartype='real' THEN setting::numeric
+            END AS numeric_value,
+        CASE
+            WHEN unit IN ('B','8kB','kB','MB') THEN 'bytes'
+            WHEN unit IN ('s','ms','min') THEN 'seconds'
+            WHEN unit IN ('integer,real') THEN 'numeric'
+            END AS units
+    FROM pg_settings
+    ORDER BY unit,name;
+
