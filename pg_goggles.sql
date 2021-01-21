@@ -244,3 +244,30 @@ CREATE OR REPLACE VIEW pgp_stat_database AS
 -- SELECT * FROM pgr_stat_database;
 -- SELECT * FROM pgp_stat_database;
 
+CREATE VIEW pgg_statio_all_tables AS
+    SELECT
+            C.oid AS relid,
+            N.nspname AS schemaname,
+            C.relname AS relname,
+            pg_stat_get_blocks_fetched(C.oid) -
+                    pg_stat_get_blocks_hit(C.oid) AS heap_blks_read,
+            pg_stat_get_blocks_hit(C.oid) AS heap_blks_hit,
+            sum(pg_stat_get_blocks_fetched(I.indexrelid) -
+                    pg_stat_get_blocks_hit(I.indexrelid))::bigint AS idx_blks_read,
+            sum(pg_stat_get_blocks_hit(I.indexrelid))::bigint AS idx_blks_hit,
+            pg_stat_get_blocks_fetched(T.oid) -
+                    pg_stat_get_blocks_hit(T.oid) AS toast_blks_read,
+            pg_stat_get_blocks_hit(T.oid) AS toast_blks_hit,
+            pg_stat_get_blocks_fetched(X.indexrelid) -
+                    pg_stat_get_blocks_hit(X.indexrelid) AS tidx_blks_read,
+            pg_stat_get_blocks_hit(X.indexrelid) AS tidx_blks_hit
+    FROM pg_class C LEFT JOIN
+            pg_index I ON C.oid = I.indrelid LEFT JOIN
+            pg_class T ON C.reltoastrelid = T.oid LEFT JOIN
+            pg_index X ON T.oid = X.indrelid
+            LEFT JOIN pg_namespace N ON (N.oid = C.relnamespace)
+    WHERE   C.relkind IN ('r', 't', 'm') -- AND
+            -- TOOO schemaname isn't working as hoped here, need to replace.
+--            N.schemaname NOT IN ('pg_catalog', 'information_schema') AND
+--            N.schemaname !~ '^pg_toast'
+    GROUP BY C.oid, N.nspname, C.relname, T.oid, X.indexrelid;

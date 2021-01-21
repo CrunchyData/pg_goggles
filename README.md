@@ -1,15 +1,28 @@
-# Intro
+# Introduction
 
-_pg\_goggles_ provides better annotated and summarized views into the database's cryptic internal counters.  These are intended for systems where access to the database port (typically 5432) is routine.  The views should supplement a full long-term metrics monitoring solution rather than replace it.
+_pg\_goggles_ provides better annotated and summarized views into the PostgreSQL database's cryptic internal counters.  These are intended for systems where access to the database port (typically 5432) is routine, whether that be for a ``psql`` client, a development language driver, or or opening communication with a monitoring server.  The views should supplement a full long-term metrics monitoring solution rather than replace it.
 
+# Installation
+
+_pg\_goggles_ can be installed by just running the software's SQL code against one database:
+
+    # psql -d gis -x -f pg_goggles.sql # Expand flag on command line
+    # SELECT * FROM pgb_stat_database;
+
+Output from the PG Goggles approach has a lot of columns.  That's why the "-x" flag was used above to list columns across lines rather than horizontal space.  You can also swap that option around with the "\x" psql command:
+
+    # psql -d gis -f pg_goggles.sql # Add expand flag as an option later
+    gis=# \x                        # Now
+    Expanded display is on.
+    x
 # Usage
 
 The goggles views use a single letter code after the "pg" to select which type of view:
 
-* G - `pgg_stat`:  `Goggles` basic view.  Pages and buffers are decoded into bytes.  Highly useful catalog data is added.  Fields are renamed with minimal changes, so that the pgg version of the view can be swapped in for scripts using the regular one with minimal changes.
-* B - `pgb_stat`:  `Byte` rate.  Rates are bytes per second or event/second unless otherwise labeled.  Times are in seconds.  The formatting for some fields is reordered to make byte/MiB units at the end.  Suitable for further machine parsing and processing.
-* R - `pgr_stat`:  `Rate` scaled to suggested units for administrator use.  This may use megabytes/second (MB/s) for some values and times in milliseconds for others.
-* P - `pgp_stat`:  `Pretty` print of rate view.  Uses _pg\_size\_pretty()_ to help scale large values.  This view is not easily machine readable; use the _pgr_ version for that instead.
+* *G* - `pgg_stat`:  `Goggles` basic view.  Pages and buffers are decoded into bytes.  Highly useful catalog data is added.  Fields are renamed with minimal changes, so that the pgg version of the view can be swapped in for scripts using the regular one with minimal changes.
+* *B* - `pgb_stat`:  `Byte` rate.  Rates are bytes per second or event/second unless otherwise labeled.  Times are in seconds.  The formatting for some fields is reordered to make byte/MiB units at the end.  Suitable for further machine parsing and processing.
+* *R* - `pgr_stat`:  `Rate` scaled to suggested units for administrator use.  This may use megabytes/second (MB/s) for some values and times in milliseconds for others.
+* *P* - `pgp_stat`:  `Pretty` print of rate view.  Uses _pg\_size\_pretty()_ to help scale large values.  This view is not easily machine readable; use the _pgr_ version for that instead.
 
 # Examples
 
@@ -74,7 +87,6 @@ Completed views:
 Targets for near future development:
 
 * _pg\_stat\_statements_:   Switch to bytes/MiB and provide a rate version.
-Planned future additions:
 * _pg\_tables_, _pg\_stat\_all\_tables_, _pg\_statio\_all\_tables_:  Convert to byte units, rate versions.
 * _pg\_indexes_, _pg\_stat\_all\_indexes_, _pg\_statio\_all\_indexes_:  Conbert to byte units.
 * _pg\_settings_:  Numeric values should be easier to lookup.
@@ -88,4 +100,6 @@ Eventually _pg\_goggles_ may expand to where it's packaged in an extension or so
 
 # Credits
 
-The PostgreSQL benchmarking work that lead to this project was sponsored by a year long R&D effort within Crunchy Data led by Greg Smith.  The name was inspired by the song ["Rose Coloured Glasses"](https://www.youtube.com/watch?v=Gp8knr8Ho-4) from the band Animal Logic's second album playing during development.
+The PostgreSQL benchmarking work that lead to this project was sponsored by a year long R&D effort within Crunchy Data led by Greg Smith.
+
+The name was inspired by the yearning of [The Goggles Do Nothing](https://knowyourmeme.com/memes/the-goggles-do-nothing) crossed with the optimism of ["Rose Coloured Glasses"](https://www.youtube.com/watch?v=Gp8knr8Ho-4), from the band Animal Logic's second album.
