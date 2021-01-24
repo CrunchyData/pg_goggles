@@ -248,23 +248,25 @@ CREATE OR REPLACE VIEW pgp_stat_database AS
 -- SELECT * FROM pgr_stat_database;
 -- SELECT * FROM pgp_stat_database;
 
-CREATE VIEW pgg_statio_all_tables AS
+DROP VIEW IF EXISTS pgg_statio_all_tables;
+CREATE OR REPLACE VIEW pgg_statio_all_tables AS
     SELECT
             C.oid AS relid,
             N.nspname AS schemaname,
             C.relname AS relname,
-            pg_stat_get_blocks_fetched(C.oid) -
-                    pg_stat_get_blocks_hit(C.oid) AS heap_blks_read,
-            pg_stat_get_blocks_hit(C.oid) AS heap_blks_hit,
-            sum(pg_stat_get_blocks_fetched(I.indexrelid) -
-                    pg_stat_get_blocks_hit(I.indexrelid))::bigint AS idx_blks_read,
-            sum(pg_stat_get_blocks_hit(I.indexrelid))::bigint AS idx_blks_hit,
-            pg_stat_get_blocks_fetched(T.oid) -
-                    pg_stat_get_blocks_hit(T.oid) AS toast_blks_read,
-            pg_stat_get_blocks_hit(T.oid) AS toast_blks_hit,
-            pg_stat_get_blocks_fetched(X.indexrelid) -
-                    pg_stat_get_blocks_hit(X.indexrelid) AS tidx_blks_read,
-            pg_stat_get_blocks_hit(X.indexrelid) AS tidx_blks_hit
+            current_setting('block_size')::numeric * (pg_stat_get_blocks_fetched(C.oid) -
+                    pg_stat_get_blocks_hit(C.oid)) AS heap_bytes_read,
+            current_setting('block_size')::numeric * pg_stat_get_blocks_hit(C.oid) AS heap_bytes_hit,
+            current_setting('block_size')::numeric * (sum(pg_stat_get_blocks_fetched(I.indexrelid) -
+                    pg_stat_get_blocks_hit(I.indexrelid))::bigint) AS idx_bytes_read,
+            current_setting('block_size')::numeric * (sum(pg_stat_get_blocks_hit(I.indexrelid))::bigint) AS idx_bytes_hit,
+            current_setting('block_size')::numeric * (pg_stat_get_blocks_fetched(T.oid) -
+                    pg_stat_get_blocks_hit(T.oid)) AS toast_bytes_read,
+            current_setting('block_size')::numeric * pg_stat_get_blocks_hit(T.oid) AS toast_bytes_hit,
+            current_setting('block_size')::numeric * (pg_stat_get_blocks_fetched(X.indexrelid) -
+                    pg_stat_get_blocks_hit(X.indexrelid)) AS tidx_bytes_read,
+            current_setting('block_size')::numeric * pg_stat_get_blocks_hit(X.indexrelid) AS tidx_bytes_hit
+            -- TODO Cache hit stats
     FROM pg_class C LEFT JOIN
             pg_index I ON C.oid = I.indrelid LEFT JOIN
             pg_class T ON C.reltoastrelid = T.oid LEFT JOIN
@@ -300,3 +302,15 @@ CREATE OR REPLACE VIEW pgg_settings AS
     FROM pg_settings
     ORDER BY unit,name;
 
+-- Nothing to add so far in basic Goggles view, just pass these through
+DROP VIEW pgg_stat_sys_tables;
+CREATE OR REPLACE VIEW pgg_stat_sys_tables AS
+    SELECT * FROM pg_stat_sys_tables;
+
+DROP VIEW pgg_stat_user_tables;
+CREATE OR REPLACE VIEW pgg_stat_user_tables AS
+    SELECT * FROM pg_stat_user_tables;
+
+DROP VIEW pgg_stat_all_tables;
+CREATE OR REPLACE VIEW pgg_stat_all_tables AS
+    SELECT * FROM pg_stat_all_tables;
