@@ -342,6 +342,7 @@ CREATE OR REPLACE VIEW pg_stat_block AS
           current_setting('block_size')::numeric AS toast_blks_read,
       pg_stat_get_blocks_hit(T.oid) *
           current_setting('block_size')::numeric AS toast_blks_hit
+    -- TODO Toast index?
     FROM pg_catalog.pg_class c
          LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
          LEFT JOIN pg_catalog.pg_index i ON i.indexrelid = c.oid
@@ -354,3 +355,56 @@ CREATE OR REPLACE VIEW pg_stat_block AS
       AND pg_catalog.pg_table_is_visible(c.oid)
       AND pg_relation_size(C.oid) > 16384
     ORDER BY c.relkind,n.nspname,c.relname;
+
+DROP VIEW IF EXISTS pgb_stat_block;
+CREATE OR REPLACE VIEW pgb_stat_block AS
+    WITH db AS (
+        SELECT
+            current_timestamp AS sample,
+            current_timestamp - stats_reset AS runtime,
+            (EXTRACT(EPOCH FROM current_timestamp) - extract(EPOCH FROM stats_reset))::numeric AS seconds,
+            d.*
+        FROM
+            pg_stat_database d
+        WHERE
+            datname=current_database()
+    )
+    SELECT
+      pg_catalog.pg_get_userbyid(c.relowner) as "Owner",
+      n.nspname as "Schema",
+      c.relname as "Name",
+      CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view'
+        WHEN 'm' THEN 'materialized view' WHEN 'i' THEN 'index'
+        WHEN 'S' THEN 'sequence' WHEN 's' THEN 'special'
+        WHEN 'f' THEN 'foreign table' WHEN 'p' THEN 'partitioned table'
+        WHEN 'I' THEN 'partitioned index' END as "Type",
+      c2.relname AS idxrel,
+      pg_relation_size(C.oid) AS rel_bytes,
+      pg_size_pretty(pg_relation_size(C.oid)) AS rel_bytes_pretty,
+      pg_stat_get_numscans(C2.oid) / seconds AS idx_scan_rate,
+      pg_stat_get_tuples_returned(C2.oid) / seconds AS idx_tup_read_rate,
+      pg_stat_get_tuples_fetched(C2.oid) / seconds AS idx_tup_fetch_rate,
+      (pg_stat_get_blocks_fetched(C.oid) -
+          pg_stat_get_blocks_hit(C.oid)) *
+          current_setting('block_size')::numeric / seconds AS heap_bytes_read_rate,
+      pg_stat_get_blocks_hit(C.oid) *
+          current_setting('block_size')::numeric / seconds AS heap_bytes_hit_rate,
+      (pg_stat_get_blocks_fetched(T.oid) -
+          pg_stat_get_blocks_hit(T.oid)) *
+          current_setting('block_size')::numeric / seconds AS toast_blks_read_rate,
+      pg_stat_get_blocks_hit(T.oid) *
+          current_setting('block_size')::numeric / seconds AS toast_blks_hit_rate
+    -- TODO Toast index?
+    FROM db, pg_catalog.pg_class c
+         LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+         LEFT JOIN pg_catalog.pg_index i ON i.indexrelid = c.oid
+         LEFT JOIN pg_catalog.pg_class c2 ON i.indrelid = c2.oid
+         LEFT JOIN pg_class T ON C.reltoastrelid = T.oid
+    WHERE c.relkind IN ('r','p','i','m','S','f','')
+          AND n.nspname <> 'pg_catalog'
+          AND n.nspname <> 'information_schema'
+          AND n.nspname !~ '^pg_toast'
+      AND pg_catalog.pg_table_is_visible(c.oid)
+      AND pg_relation_size(C.oid) > 16384
+    ORDER BY c.relkind,n.nspname,c.relname;
+
