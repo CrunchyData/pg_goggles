@@ -2,7 +2,7 @@
 
 _pg\_goggles_ provides better annotated and summarized views into the PostgreSQL database's cryptic internal counters.  These are intended for systems where access to the database port (typically 5432) is routine, whether that be for a ``psql`` client, a development language driver, or or opening communication with a monitoring server.  The views should supplement a full long-term metrics monitoring solution rather than replace it.
 
-[](logo.png)
+![](logo.png)
 
 # Installation
 
@@ -96,6 +96,7 @@ Targets for near future development:
 * _pg\_stat\_activity_:  Might improve on waiting information.
 
 Future views:
+
 * _pg\_stat\_relations_:  Combined table and index view.
 
 Eventually _pg\_goggles_ may expand to where it's packaged in an extension or some other form for easier testing and use.
@@ -104,4 +105,4 @@ Eventually _pg\_goggles_ may expand to where it's packaged in an extension or so
 
 The PostgreSQL benchmarking work that lead to this project was sponsored by a year long R&D effort within Crunchy Data led by Greg Smith.
 
-The name was inspired by the yearning of [The Goggles Do Nothing](https://knowyourmeme.com/memes/the-goggles-do-nothing) crossed with the optimism of ["Rose Coloured Glasses"](https://www.youtube.com/watch?v=Gp8knr8Ho-4), from the band Animal Logic's second album.
+The name was inspired by the yearning of [The Goggles Do Nothing](https://knowyourmeme.com/memes/the-goggles-do-nothing) crossed with the optimism of ["Rose Coloured Glasses"](https://www.youtube.com/watch?v=Gp8knr8Ho-4), from the band Animal Logic's second album.  The streampunk goggle logo was commissioned from artist [Arya Putr](https://www.fiverr.com/aryaardana)
