@@ -2,6 +2,8 @@
 
 _pg\_goggles_ provides better annotated and summarized views into the PostgreSQL database's cryptic internal counters.  These are intended for systems where access to the database port (typically 5432) is routine, whether that be for a ``psql`` client, a development language driver, or or opening communication with a monitoring server.  The views should supplement a full long-term metrics monitoring solution rather than replace it.
 
+[](logo.png)
+
 # Installation
 
 _pg\_goggles_ can be installed by just running the software's SQL code against one database:
