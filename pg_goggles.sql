@@ -181,6 +181,7 @@ CREATE OR REPLACE VIEW pgb_stat_database AS
         xact_commit, xact_rollback,
         xact_commit   / seconds AS xact_commit_rate,
         xact_rollback / seconds AS xact_rollback_rate,
+        -- TODO replace these with block_size in WITH?
         current_setting('block_size')::numeric * blks_hit AS hit_bytes,
         current_setting('block_size')::numeric * blks_read AS read_bytes,
         current_setting('block_size')::numeric * blks_hit / seconds AS hit_rate_bytes,
@@ -384,14 +385,15 @@ CREATE OR REPLACE VIEW pgb_stat_block AS
       pg_stat_get_numscans(C2.oid) / seconds AS idx_scan_rate,
       pg_stat_get_tuples_returned(C2.oid) / seconds AS idx_tup_read_rate,
       pg_stat_get_tuples_fetched(C2.oid) / seconds AS idx_tup_fetch_rate,
-      (pg_stat_get_blocks_fetched(C.oid) -
-          pg_stat_get_blocks_hit(C.oid)) *
-          current_setting('block_size')::numeric / seconds AS heap_bytes_read_rate,
+-- TODO This doesn't work?
+      pg_size_pretty(
+          (pg_stat_get_blocks_fetched(C.oid) - pg_stat_get_blocks_hit(C.oid))
+          *
+          current_setting('block_size')::numeric / seconds)::bigint
+          )
+          AS heap_bytes_read_rate,
       pg_stat_get_blocks_hit(C.oid) *
           current_setting('block_size')::numeric / seconds AS heap_bytes_hit_rate,
-      (pg_stat_get_blocks_fetched(T.oid) -
-          pg_stat_get_blocks_hit(T.oid)) *
-          current_setting('block_size')::numeric / seconds AS toast_blks_read_rate,
       pg_stat_get_blocks_hit(T.oid) *
           current_setting('block_size')::numeric / seconds AS toast_blks_hit_rate
     -- TODO Toast index?
@@ -408,3 +410,135 @@ CREATE OR REPLACE VIEW pgb_stat_block AS
       AND pg_relation_size(C.oid) > 16384
     ORDER BY c.relkind,n.nspname,c.relname;
 
+-- TODO Should break down returned/feched etc more like original view components.  Not permanently, just to help prove the MiB code looks right and the () are in the right place.
+-- TODO Find less long run-on description for previous TODO
+
+-- Goggles provide time interval and convert to bytes
+DROP VIEW IF EXISTS pgg_stat_statements;
+CREATE OR REPLACE VIEW pgg_stat_statements AS
+    WITH db AS (
+        SELECT
+            current_timestamp AS sample,
+            current_timestamp - stats_reset AS runtime,
+            (EXTRACT(EPOCH FROM current_timestamp) - extract(EPOCH FROM stats_reset))::numeric AS seconds,
+            p.setting::integer AS bs
+        FROM
+            pg_stat_database d, pg_settings p
+        WHERE
+            d.datname=current_database() AND
+            p.name='block_size'
+    )
+    SELECT
+        --Version for pg_stat_database version
+        --pg_stat_get_db_stat_reset_time(db.datid) AS reset,
+        queryid,
+        db.seconds,
+        -- TODO Is there a way to cap the column width at 60 but allow vertical multi-line?
+        substr(query,0,60) AS query,
+        calls,
+        rows,
+        ROUND(total_exec_time::numeric / (1000.0*60*60),2) as "total_hrs",
+        plans,total_plan_time,min_plan_time,max_plan_time,mean_plan_time,stddev_plan_time,
+        total_exec_time,min_exec_time,max_exec_time,mean_exec_time,stddev_exec_time,
+        shared_blks_hit     * bs AS shared_hit_bytes,  -- Or just shared_hit? and assume bytes?
+        shared_blks_read    * bs AS shared_read_bytes,
+        shared_blks_dirtied * bs AS shared_dirtied_bytes,
+        shared_blks_written * bs AS shared_written_bytes,
+        local_blks_hit      * bs AS local_hit_bytes,
+        local_blks_read     * bs AS local_read_bytes,
+        local_blks_dirtied  * bs AS local_dirtied_bytes,
+        local_blks_written  * bs AS local_written_bytes,
+        temp_blks_read      * bs AS temp_bytes_read,
+        temp_blks_written   * bs AS temp_bytes_written,
+        -- TODO Scale these by read/write total, so avg latency per read/write
+        blk_read_time,blk_write_time,
+        wal_records,wal_fpi,wal_bytes
+    FROM db,pg_stat_statements
+    ORDER BY total_exec_time DESC;
+
+-- Byte rate
+DROP VIEW IF EXISTS pgb_stat_statements;
+CREATE OR REPLACE VIEW pgb_stat_statements AS
+    WITH db AS (
+        SELECT
+            current_timestamp AS sample,
+            current_timestamp - stats_reset AS runtime,
+            (EXTRACT(EPOCH FROM current_timestamp) - extract(EPOCH FROM stats_reset))::numeric AS seconds,
+            p.setting::integer AS bs
+        FROM
+            pg_stat_database d, pg_settings p
+        WHERE
+            d.datname=current_database() AND
+            p.name='block_size'
+    )
+    SELECT
+        --Version for pg_stat_database version
+        --pg_stat_get_db_stat_reset_time(db.datid) AS reset,
+        queryid,
+        db.seconds,
+        -- TODO Is there a way to cap the column width at 60 but allow vertical multi-line?
+        substr(query,0,60) AS query,
+        calls,
+        rows,
+        ROUND(total_exec_time::numeric / (1000.0*60*60),2) as "total_hrs",
+        plans,total_plan_time,min_plan_time,max_plan_time,mean_plan_time,stddev_plan_time,
+        total_exec_time,min_exec_time,max_exec_time,mean_exec_time,stddev_exec_time,
+        ROUND(shared_blks_hit     * bs / seconds) AS shared_hit_rate,
+        ROUND(shared_blks_read    * bs / seconds) AS shared_read_rate,
+        ROUND(shared_blks_dirtied * bs / seconds) AS shared_dirtied_rate,
+        ROUND(shared_blks_written * bs / seconds) AS shared_written_rate,
+        ROUND(local_blks_hit      * bs / seconds) AS local_hit_rate,
+        ROUND(local_blks_read     * bs / seconds) AS local_read_rate,
+        ROUND(local_blks_dirtied  * bs / seconds) AS local_dirtied_rate,
+        ROUND(local_blks_written  * bs / seconds) AS local_written_rate,
+        ROUND(temp_blks_read      * bs / seconds) AS temp_read_rate,
+        ROUND(temp_blks_written   * bs / seconds) AS temp_written_rate,
+        -- TODO Scale these by read/write total, so avg latency per read/write
+        blk_read_time,blk_write_time,
+        wal_records,wal_fpi,wal_bytes
+    FROM db,pg_stat_statements
+    ORDER BY total_exec_time DESC;
+
+DROP VIEW IF EXISTS pgp_stat_statements;
+-- TODO Need pretty print version
+
+CREATE OR REPLACE VIEW pgp_stat_statements AS
+    WITH db AS (
+        SELECT
+            current_timestamp AS sample,
+            current_timestamp - stats_reset AS runtime,
+            (EXTRACT(EPOCH FROM current_timestamp) - extract(EPOCH FROM stats_reset))::numeric AS seconds,
+            p.setting::integer AS bs
+        FROM
+            pg_stat_database d, pg_settings p
+        WHERE
+            d.datname=current_database() AND
+            p.name='block_size'
+    )
+    SELECT
+        --Version for pg_stat_database version
+        --pg_stat_get_db_stat_reset_time(db.datid) AS reset,
+        queryid,
+        db.seconds,
+        -- TODO Is there a way to cap the column width at 60 but allow vertical multi-line?
+        substr(query,0,60) AS query,
+        calls,
+        rows,
+        ROUND(total_exec_time::numeric / (1000.0*60*60),2) as "total_hrs",
+        plans,total_plan_time,min_plan_time,max_plan_time,mean_plan_time,stddev_plan_time,
+        total_exec_time,min_exec_time,max_exec_time,mean_exec_time,stddev_exec_time,
+        pg_size_pretty(ROUND(shared_blks_hit     * bs / seconds)::int8) AS shared_hit_rate,
+        pg_size_pretty(ROUND(shared_blks_read    * bs / seconds)::int8) AS shared_read_rate,
+        pg_size_pretty(ROUND(shared_blks_dirtied * bs / seconds)::int8) AS shared_dirtied_rate,
+        pg_size_pretty(ROUND(shared_blks_written * bs / seconds)::int8) AS shared_written_rate,
+        pg_size_pretty(ROUND(local_blks_hit      * bs / seconds)::int8) AS local_hit_rate,
+        pg_size_pretty(ROUND(local_blks_read     * bs / seconds)::int8) AS local_read_rate,
+        pg_size_pretty(ROUND(local_blks_dirtied  * bs / seconds)::int8) AS local_dirtied_rate,
+        pg_size_pretty(ROUND(local_blks_written  * bs / seconds)::int8) AS local_written_rate,
+        pg_size_pretty(ROUND(temp_blks_read      * bs / seconds)::int8) AS temp_read_rate,
+        pg_size_pretty(ROUND(temp_blks_written   * bs / seconds)::int8) AS temp_written_rate,
+        -- TODO Scale these by read/write total, so avg latency per read/write
+        blk_read_time,blk_write_time,
+        wal_records,wal_fpi,wal_bytes
+    FROM db,pg_stat_statements
+    ORDER BY total_exec_time DESC;
