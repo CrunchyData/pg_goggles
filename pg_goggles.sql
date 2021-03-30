@@ -385,13 +385,8 @@ CREATE OR REPLACE VIEW pgb_stat_block AS
       pg_stat_get_numscans(C2.oid) / seconds AS idx_scan_rate,
       pg_stat_get_tuples_returned(C2.oid) / seconds AS idx_tup_read_rate,
       pg_stat_get_tuples_fetched(C2.oid) / seconds AS idx_tup_fetch_rate,
--- TODO This doesn't work?
-      pg_size_pretty(
-          (pg_stat_get_blocks_fetched(C.oid) - pg_stat_get_blocks_hit(C.oid))
-          *
-          current_setting('block_size')::numeric / seconds)::bigint
-          )
-          AS heap_bytes_read_rate,
+      (pg_stat_get_blocks_fetched(C.oid) - pg_stat_get_blocks_hit(C.oid)) *
+          current_setting('block_size')::numeric / seconds AS heap_bytes_read_rate,
       pg_stat_get_blocks_hit(C.oid) *
           current_setting('block_size')::numeric / seconds AS heap_bytes_hit_rate,
       pg_stat_get_blocks_hit(T.oid) *
