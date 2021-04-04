@@ -291,7 +291,9 @@ CREATE OR REPLACE VIEW pgg_settings AS
             WHEN unit IN ('B','8kB','kB','MB') THEN 'bytes'
             WHEN unit IN ('s','ms','min') THEN 'seconds'
             WHEN unit IN ('integer,real') THEN 'numeric'
-            END AS units
+            END AS units,
+        sourcefile IS NOT null AS changed,
+        sourcefile,sourceline
     FROM pg_settings
     ORDER BY unit,name;
 
