@@ -97,7 +97,7 @@ Targets for near future development:
 
 Future views:
 
-* _pg\_stat\_relations_:  Combined table and index view.
+* _pg\_stat\_blocks_:  Combined table and index view.
 
 Eventually _pg\_goggles_ may expand to where it's packaged in an extension or some other form for easier testing and use.
 
