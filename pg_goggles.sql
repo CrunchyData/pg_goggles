@@ -432,6 +432,9 @@ CREATE OR REPLACE VIEW pgg_stat_statements AS
         plans,total_plan_time,min_plan_time,max_plan_time,mean_plan_time,stddev_plan_time,
         total_exec_time,min_exec_time,max_exec_time,mean_exec_time,stddev_exec_time,
 
+        shared_blks_read,
+        shared_blks_written,
+
         shared_blks_hit     * bs AS shared_hit_bytes,
         shared_blks_read    * bs AS shared_read_bytes,
         shared_blks_dirtied * bs AS shared_dirtied_bytes,
@@ -454,10 +457,21 @@ CREATE OR REPLACE VIEW pgg_stat_statements AS
         -- TODO In PG sys view, why do temp files have "write" when all others are "written"?
         -- TODO Is it worth turning temp info into percentages?
         temp_blks_written   * bs AS temp_written_bytes,
-        -- TODO Scale these by read/write total, so avg latency per read/write?
-        -- TODO Compare read and write time with a ratio or percentage?
         -- TODO Do read and/or write time make sense as a percentage of clock time?
         blk_read_time,blk_write_time,
+
+        CASE WHEN (shared_blks_read+shared_blks_written) > 0
+            THEN ROUND(100*shared_blks_read/(shared_blks_read+shared_blks_written)::numeric,3)
+            ELSE 0 END AS byte_read_pct,
+
+        CASE WHEN (shared_blks_read) > 0
+            THEN ROUND((blk_read_time / shared_blks_read)::numeric,3)
+            ELSE 0 END AS avg_read_time,
+
+        CASE WHEN (shared_blks_written) > 0
+            THEN ROUND((blk_write_time / shared_blks_written)::numeric,3)
+            ELSE 0 END AS avg_write_time,
+
         wal_records,wal_fpi,wal_bytes
     FROM db,pg_stat_statements
     ORDER BY total_exec_time DESC;
@@ -487,6 +501,9 @@ CREATE OR REPLACE VIEW pgb_stat_statements AS
         blk_cached_pct,
         blk_dirtied_pct,
         blk_read_time,blk_write_time,
+        byte_read_pct,
+        avg_read_time,
+        avg_write_time,
         wal_records,wal_fpi,wal_bytes
     FROM pgg_stat_statements ORDER BY total_exec_time DESC;
 
@@ -516,7 +533,9 @@ CREATE OR REPLACE VIEW pgp_stat_statements AS
         ROUND(blk_dirtied_pct,2) AS blk_dirtied_pct,
         ROUND(blk_read_time::numeric,3) AS blk_read_time,
         ROUND(blk_write_time::numeric,3) AS blk_write_time,
+        ROUND(byte_read_pct::numeric,2) AS byte_read_pct,
+        ROUND(avg_read_time::numeric,3) AS avg_read_time,
+        ROUND(avg_write_time::numeric,3) AS avg_write_time,
         wal_records,wal_fpi,
         pg_size_pretty(ROUND(wal_bytes / runtime)::int8) AS wal_rate
     FROM pgg_stat_statements ORDER BY total_exec_time DESC;
-
