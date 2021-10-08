@@ -82,22 +82,20 @@ PostgreSQL has a whole list of [monitoring projects](https://wiki.postgresql.org
 
 # Scope
 
-Completed views:
+Completed views:  (albeit with TODO loose ends)
 
 * _pg\_stat\_bgwriter_, _pg\_stat\_database_.
-
-Targets for near future development:
-
 * _pg\_stat\_statements_:   Switch to bytes/MiB and provide a rate version.
 * _pg\_tables_, _pg\_stat\_all\_tables_, _pg\_statio\_all\_tables_:  Convert to byte units, rate versions.
 * _pg\_indexes_, _pg\_stat\_all\_indexes_, _pg\_statio\_all\_indexes_:  Conbert to byte units.
 * _pg\_settings_:  Numeric values should be easier to lookup.
+
+WIP
+* _pg\_stat\_blocks_:  Combined table and index view.
+
+Targets for future development:
 * _pg\_locks_:  Include the standard recursive lock nagivator.
 * _pg\_stat\_activity_:  Might improve on waiting information.
-
-Future views:
-
-* _pg\_stat\_blocks_:  Combined table and index view.
 
 Eventually _pg\_goggles_ may expand to where it's packaged in an extension or some other form for easier testing and use.
 
