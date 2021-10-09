@@ -382,15 +382,18 @@ CREATE OR REPLACE VIEW pgb_stat_block AS
       c2.relname AS idxrel,
       pg_relation_size(C.oid) AS rel_bytes,
       pg_size_pretty(pg_relation_size(C.oid)) AS rel_bytes_pretty,
-      pg_stat_get_numscans(C2.oid) / seconds AS idx_scan_rate,
-      pg_stat_get_tuples_returned(C2.oid) / seconds AS idx_tup_read_rate,
-      pg_stat_get_tuples_fetched(C2.oid) / seconds AS idx_tup_fetch_rate,
-      (pg_stat_get_blocks_fetched(C.oid) - pg_stat_get_blocks_hit(C.oid)) *
-              bs / seconds 
-          AS heap_bytes_read_rate,
-      pg_stat_get_blocks_hit(C.oid) * bs / seconds
-          AS heap_bytes_hit_rate,
-      pg_stat_get_blocks_hit(T.oid) * bs / seconds
+      round((pg_stat_get_numscans(C2.oid) / seconds)::numeric,2) AS idx_scan_rate,
+      round((pg_stat_get_tuples_returned(C2.oid) / seconds)::numeric,2) AS idx_tup_read_rate,
+      round((pg_stat_get_tuples_fetched(C2.oid) / seconds)::numeric,2) AS idx_tup_fetch_rate,
+      round(((pg_stat_get_blocks_fetched(C.oid) - pg_stat_get_blocks_hit(C.oid)) * bs / seconds))
+        AS heap_bytes_read_rate,
+      pg_size_pretty(round(((pg_stat_get_blocks_fetched(C.oid) - pg_stat_get_blocks_hit(C.oid)) * bs / seconds)))
+        AS heap_bytes_read_rate_pretty,
+      round((pg_stat_get_blocks_hit(C.oid) * bs / seconds))
+        AS heap_bytes_hit_rate,
+      pg_size_pretty(round((pg_stat_get_blocks_hit(C.oid) * bs / seconds)))
+        AS heap_bytes_hit_rate_pretty,
+      round((pg_stat_get_blocks_hit(T.oid) * bs / seconds)::numeric,2)
           AS toast_blks_hit_rate
     -- TODO Toast index?
     FROM db, pg_catalog.pg_class c
