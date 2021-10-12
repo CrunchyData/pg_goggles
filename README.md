@@ -87,7 +87,7 @@ Completed views:  (albeit with TODO loose ends)
 * _pg\_stat\_bgwriter_, _pg\_stat\_database_.
 * _pg\_stat\_statements_:   Switch to bytes/MiB and provide a rate version.
 * _pg\_tables_, _pg\_stat\_all\_tables_, _pg\_statio\_all\_tables_:  Convert to byte units, rate versions.
-* _pg\_indexes_, _pg\_stat\_all\_indexes_, _pg\_statio\_all\_indexes_:  Conbert to byte units.
+* _pg\_indexes_, _pg\_stat\_all\_indexes_, _pg\_statio\_all\_indexes_:  Convert to byte units.
 * _pg\_settings_:  Numeric values should be easier to lookup.
 
 WIP
