@@ -388,7 +388,14 @@ CREATE OR REPLACE VIEW pgb_stat_block AS
         WHEN 'I' THEN 'partitioned index' END as "Type",
       c2.relname AS idxrel,
       pg_relation_size(C.oid) AS rel_bytes,
+      pg_total_relation_size(C.oid) AS rel_total_bytes,
       pg_size_pretty(pg_relation_size(C.oid)) AS rel_bytes_pretty,
+      pg_size_pretty(pg_total_relation_size(C.oid)) AS total_rel_bytes_pretty,
+      pg_stat_get_live_tuples(C.oid) AS n_live_tup,
+      pg_stat_get_dead_tuples(C.oid) AS n_dead_tup,
+      CASE WHEN (pg_stat_get_live_tuples(C.oid) + pg_stat_get_dead_tuples(C.oid))>0
+        THEN round(100*pg_stat_get_dead_tuples(C.oid) / (pg_stat_get_live_tuples(C.oid) + pg_stat_get_dead_tuples(C.oid))::numeric,2)
+        ELSE 0.00 END AS dead_pct,
       round((pg_stat_get_numscans(C2.oid) / seconds)::numeric,2) AS idx_scan_rate,
       round((pg_stat_get_tuples_returned(C2.oid) / seconds)::numeric,2) AS idx_tup_read_rate,
       round((pg_stat_get_tuples_fetched(C2.oid) / seconds)::numeric,2) AS idx_tup_fetch_rate,
