@@ -318,7 +318,7 @@ CREATE OR REPLACE VIEW pg_stat_block AS
     WITH blks AS
         (SELECT current_setting('block_size')::numeric AS bs)
     SELECT
-      pg_catalog.pg_get_userbyid(c.relowner) as owner,
+      pg_catalog.pg_get_userbyid(c.relowner) as owner_name,
       n.nspname as schema_name,
       c.relname as relation_name,
       CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view'
@@ -378,14 +378,14 @@ CREATE OR REPLACE VIEW pgb_stat_block AS
             datname=current_database()
     )
     SELECT
-      pg_catalog.pg_get_userbyid(c.relowner) as "Owner",
-      n.nspname as "Schema",
-      c.relname as "Name",
+      pg_catalog.pg_get_userbyid(c.relowner) AS owner_name,
+      n.nspname as schema_name,
+      c.relname as relation_name,
       CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view'
         WHEN 'm' THEN 'materialized view' WHEN 'i' THEN 'index'
         WHEN 'S' THEN 'sequence' WHEN 's' THEN 'special'
         WHEN 'f' THEN 'foreign table' WHEN 'p' THEN 'partitioned table'
-        WHEN 'I' THEN 'partitioned index' END as "Type",
+        WHEN 'I' THEN 'partitioned index' END AS kind,
       c2.relname AS idxrel,
       pg_relation_size(C.oid) AS rel_bytes,
       pg_total_relation_size(C.oid) AS rel_total_bytes,
