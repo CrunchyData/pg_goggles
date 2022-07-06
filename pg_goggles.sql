@@ -326,7 +326,10 @@ CREATE OR REPLACE VIEW pg_stat_block AS
         WHEN 'S' THEN 'sequence' WHEN 's' THEN 'special'
         WHEN 'f' THEN 'foreign table' WHEN 'p' THEN 'partitioned table'
         WHEN 'I' THEN 'partitioned index' END as relation_kind,
-      c2.relname AS idxrel,
+      CASE c.relkind WHEN 'r'
+        THEN C.relname
+        ELSE C2.relname END
+        AS idxrel,
       pg_relation_size(C.oid) AS rel_bytes,
       pg_total_relation_size(C.oid) AS rel_total_bytes,
       pg_size_pretty(pg_relation_size(C.oid)) AS rel_bytes_pretty,
